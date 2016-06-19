@@ -1,16 +1,19 @@
 'use strict';
 
 
-PDFJS.getDocument("networks.pdf")
-     .then(pdf => pdf.getPage(2))
+PDFJS.getDocument("entrylevel.pdf")
+     .then(pdf => pdf.getPage(3))
      .then(renderPage)
      .then(showCitationAnnotations);
      //.then(extractText)
      //.then(text => console.log(text));
 
+var viewport;
+var scale = 1.5;
+
+
 function renderPage(page) {
-    var scale = 3;
-    var viewport = page.getViewport(scale);
+    viewport = page.getViewport(scale);
 
     // prepare canvas using PDF page dimensions.
     var canvas = document.getElementById('pdf-canvas');
@@ -40,15 +43,23 @@ function renderPage(page) {
 function findCitations(text) {
     var canvas = document.getElementById('pdf-canvas');
     var context = canvas.getContext('2d');
-    context.font = (9.9626 + 0.1) + "px Times New Roman";
-    //context.fillStyle = "red";
+    var fontsize = (9.9626 + 0.);
+    context.font = fontsize+ "px Times New Roman";
+    context.fillStyle = "red";
     //context.fillText("works, particularly when combined with Adagrad [10]", 108*scale, viewport.height - 573.6500000000005*scale);
 
     function textWidth(text) {
+        context.font = fontsize+ "px Times New Roman";
         return context.measureText(text).width;
     }
 
+    function displayText(text, transform) {
+        context.font = fontsize*scale + "px Times New Roman";
+        context.fillText(text, transform[4]*scale, viewport.height - transform[5]*scale);
+    }
+
     function calculateCoordinates(text, startIndex, stopIndex, transform) {
+        //displayText(text, transform);
         return {"left": transform[4] + textWidth(text.slice(0, startIndex)),
                  "width": textWidth(text.slice(startIndex, stopIndex)),
                  "top": transform[5] + transform[0],
@@ -74,8 +85,8 @@ function findCitations(text) {
                     var coordinates = calculateCoordinates(line, startIndex, stopIndex, items[i].transform);
                     
                     // and append to list of found citations
-                    var id = i*100+b*10+c;  // unique identifier for each citation found 
-                    found.push({"id": id, "coordinates": coordinates}) 
+                    var id = i*100+b*10+c;  // unique identifier for each citation found (same refId can be several time on the same page)
+                    found.push({"id": id, "coordinates": coordinates, "ref": citations[c]["group"]}) 
                 }
             }
         }
@@ -95,8 +106,8 @@ function findCitations(text) {
 
 
 function showCitationAnnotations(text) {
+    text = restoreLines(text);
     var citations = findCitations(text);
-    console.log(citations);
 
     var svg = d3.select("#annotation-div").select("g");
 
@@ -128,7 +139,7 @@ function showCitationAnnotations(text) {
     tooltipGroups.append("rect")
                  .attr("x", d => d.coordinates.width + 3)
                  .attr("y", 0)
-                 .attr("width", 100)
+                 .attr("width", 150)
                  .attr("height", 30)
                  .classed("citation-tooltip-box", true);
 
@@ -136,12 +147,38 @@ function showCitationAnnotations(text) {
     tooltipGroups.append("text")
                  .attr("x", d => d.coordinates.width + 10)
                  .attr("y", 20)
-                 .text("Reference text here")
+                 .text(d => "Reference text here for "+d.ref)
+                 .attr("font-size", 10)
                  .classed("citation-tooltip-text", true);
 }
 
+function restoreLines(text) {
+    var lines = [];
+    var currentLine = null;    
+    for (var i=0; i<text.items.length; i++) {
+        // init
+        if (!currentLine) {
+            currentLine = text.items[i];
+            continue;
+        }
+        
+        // items[i] appears on same line
+        if (Math.abs(currentLine.transform[5] - text.items[i].transform[5]) < 0.001) {
+            currentLine.str += text.items[i].str
+            currentLine.width += text.items[i].width
+        }
+        // items[i] appears on new line 
+        else {
+            lines.push(currentLine);
+            currentLine = text.items[i];    
+        }
+    }
+    text.items = lines;
+
+    return text;
+}
+
 function extractText(page) {
-    console.log(page);
     var lineStart = 108;
     var regularDistance = 11;
 
