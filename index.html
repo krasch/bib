@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+
+<head>
+  <script src="pdf.js"></script>
+  <script>PDFJS.workerSrc = 'pdf.worker.js';</script>
+  <script src="d3.min.js"></script>
+  <script src="bib.js"></script>
+
+  <style>
+    #container { position: relative;}
+    #pdf-canvas {position: absolute; top: 0; left: 0; border:1px solid black;}
+    #annotation-div { position: absolute; top: 0; left: 0;}
+
+    .hidden {visibility: hidden}
+
+    .citation-marker {stroke: red; stroke-width: 1; fill-opacity: 0;  z-index: 100}
+    .citation-tooltip-box {stroke: black; fill: #fff; z-index: 200}
+    .citation-tooltip-text {font-size: 10px, z-index: 210}
+  </style>   
+</head>
+
+<body>
+  <div id="container">
+     <canvas id="pdf-canvas"></canvas>
+     <div id="annotation-div"></div>
+  </div>
+</body>
+
+</html>
