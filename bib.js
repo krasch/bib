@@ -2,13 +2,12 @@
 
 var pdf = "entrylevel.pdf"
 var scale = 1.5;
-var currentPage = 1;
+var currentPage = 4;
 
 
 PDFJS.getDocument(pdf)
      .then(pdf => pdf.getPage(currentPage))
      .then(renderPage);
-
 
 function renderPage(page) {
     var renderContext = initCanvas(page);
@@ -16,6 +15,22 @@ function renderPage(page) {
     return page.render(renderContext)
                 .then(() => page.getTextContent())
                 .then(showAnnotations)
+}
+
+function previousPage() {
+    if (currentPage==1)
+        return;
+    currentPage--;
+    PDFJS.getDocument(pdf)
+         .then(pdf => pdf.getPage(currentPage))
+         .then(renderPage);
+}
+
+function nextPage() {
+    currentPage++;
+    PDFJS.getDocument(pdf)
+         .then(pdf => pdf.getPage(currentPage))
+         .then(renderPage);    
 }
 
 
@@ -54,12 +69,17 @@ function showAnnotations(page) {
     var svg = d3.select("#annotation-div").select("g");
 
     // for each reference make a group of svg elements
-    var groups = svg.selectAll("g")
-                    .data(references)
-                    .enter()
-                    .append("g")
-                    //and center that group at the location of the reference, makes all later indexing much easier
-                    .attr("transform", d => "translate("+d.coordinates.left+", -" + d.coordinates.top+")");
+    var groups = svg.selectAll("g").data(references, d=> d.id)
+
+    // remove old references (from a previous page)
+    groups.exit().remove()
+
+    // center that group at the location of the reference, makes all later indexing much easier                  
+    groups.enter()
+          .append("g")
+          .attr("transform", d=> "translate("+d.coordinates.left+", -" + d.coordinates.top+")");
+
+
 
     // clickable marker of the reference
     groups.append("rect")
