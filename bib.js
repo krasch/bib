@@ -4,7 +4,7 @@
 PDFJS.getDocument("entrylevel.pdf")
      .then(pdf => pdf.getPage(3))
      .then(renderPage)
-     .then(showCitationAnnotations);
+     .then(showAnnotations);
      //.then(extractText)
      //.then(text => console.log(text));
 
@@ -40,7 +40,7 @@ function renderPage(page) {
     return page.render(renderContext).then(() => page.getTextContent());
 }
 
-function findCitations(text) {
+function findReferences(text) {
     var canvas = document.getElementById('pdf-canvas');
     var context = canvas.getContext('2d');
     var fontsize = (9.9626 + 0.);
@@ -71,22 +71,22 @@ function findCitations(text) {
         for (var i=0; i<items.length; i++) {
             var line = items[i].str;
             
-            // first try to find any citations in [] brackets, e.g [17], [17, 18, 22]
+            // first try to find any references in [] brackets, e.g [17], [17, 18, 22]
             var inBrackets = matchAll(line, /\[([0-9, ]+?)\]/g);
 
-            // each bracket might contain several citations, find the individual ones
+            // each bracket might contain several references, find the individual ones
             for (var b=0; b<inBrackets.length; b++) {
-                var citations = matchAll(inBrackets[b]["group"], /([0-9]+)/g);
+                var references = matchAll(inBrackets[b]["group"], /([0-9]+)/g);
 
-                // finally, calculate the canvas cordinates for each citation
-                for (var c=0; c < citations.length; c++) {
-                    var startIndex = inBrackets[b]["index"] + citations[c]["index"] + 1; 
-                    var stopIndex = startIndex + citations[c]["group"].length;
+                // finally, calculate the canvas cordinates for each reference
+                for (var c=0; c < references.length; c++) {
+                    var startIndex = inBrackets[b]["index"] + references[c]["index"] + 1; 
+                    var stopIndex = startIndex + references[c]["group"].length;
                     var coordinates = calculateCoordinates(line, startIndex, stopIndex, items[i].transform);
                     
-                    // and append to list of found citations
-                    var id = i*100+b*10+c;  // unique identifier for each citation found (same refId can be several time on the same page)
-                    found.push({"id": id, "coordinates": coordinates, "ref": citations[c]["group"]}) 
+                    // and append to list of found references
+                    var id = i*100+b*10+c;  // unique identifier for each reference found (same refId can be several time on the same page)
+                    found.push({"id": id, "coordinates": coordinates, "ref": references[c]["group"]}) 
                 }
             }
         }
@@ -105,51 +105,51 @@ function findCitations(text) {
 }
 
 
-function showCitationAnnotations(text) {
+function showAnnotations(text) {
     text = restoreLines(text);
-    var citations = findCitations(text);
+    var references = findReferences(text);
 
     var svg = d3.select("#annotation-div").select("g");
 
-    // for each citation make a group of svg elements
+    // for each reference make a group of svg elements
     var groups = svg.selectAll("g")
-                    .data(citations)
+                    .data(references)
                     .enter()
                     .append("g")
-                    //and center that group at the location of the citation, makes all later indexing much easier
+                    //and center that group at the location of the reference, makes all later indexing much easier
                     .attr("transform", d => "translate("+d.coordinates.left+", -" + d.coordinates.top+")");
 
-    // clickable marker of the citation
+    // clickable marker of the reference
     groups.append("rect")
           .attr("x", 0)
           .attr("y", 2)
           .attr("width", d => d.coordinates.width )
           .attr("height", d => d.coordinates.height)
-          .classed("citation-marker", true)  
+          .classed("reference-marker", true)  
           .on("mouseover", d => d3.select("#tooltip" + d.id).classed("hidden", false))
           .on("mouseout", d => d3.select("#tooltip" + d.id).classed("hidden", true));
 
     
-    // another subgroup for each citation contains everything needed for the tool tips, super useful for quickly hiding everything
+    // another subgroup for each reference contains everything needed for the tool tips, super useful for quickly hiding everything
     var tooltipGroups = groups.append("g")
                               .classed("hidden", true)
                               .attr("id", d => "tooltip"+ d.id); 
 
-    // box for putting the info about the citation
+    // box for putting the info about the reference
     tooltipGroups.append("rect")
                  .attr("x", d => d.coordinates.width + 3)
                  .attr("y", 0)
                  .attr("width", 150)
                  .attr("height", 30)
-                 .classed("citation-tooltip-box", true);
+                 .classed("reference-tooltip-box", true);
 
-    // the citation info
+    // the reference info
     tooltipGroups.append("text")
                  .attr("x", d => d.coordinates.width + 10)
                  .attr("y", 20)
                  .text(d => "Reference text here for "+d.ref)
                  .attr("font-size", 10)
-                 .classed("citation-tooltip-text", true);
+                 .classed("reference-tooltip-text", true);
 }
 
 function restoreLines(text) {
