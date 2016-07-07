@@ -97,3 +97,63 @@ function findReferences(page) {
     return found;
 }
 
+
+function findBibliography(pdf) {
+    // lot's of duplicate code, very ew
+    function getText(page) {
+        var viewport = page.getViewport(scale);
+
+        // prepare canvas using PDF page dimensions.
+        var canvas = document.getElementById('parsing-canvas');
+        var context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        // prepare rendering context
+        var renderContext = {
+            canvasContext: context,
+            viewport: viewport
+        };
+   
+        return page.render(renderContext).then(() => page.getTextContent())
+   } 
+
+    function find(text) {
+        text = restoreLines(text);
+        
+        var headerPosition;
+        for (var i=0; i<text.items.length; i++) {
+            if (text.items[i].str == "References")
+               headerPosition=i;
+        }
+        if (!headerPosition)
+            return [];
+
+        text.items = text.items.slice(headerPosition+1);
+        
+        var bibliography = {}
+        var referenceText = ""
+        var referenceItem;
+        var re = /\[([0-9, ]+?)\]/g
+        for (var i=0; i<text.items.length; i++) {
+            
+            var m = re.exec(text.items[i].str);
+            if (m) {
+                if (referenceItem)
+                    bibliography[referenceItem] = referenceText;
+                referenceText=text.items[i].str;
+                referenceItem = m[1];
+            }
+            else {
+                referenceText += "\n" + text.items[i].str;
+            }
+        }
+        if (referenceItem)
+            bibliography[referenceItem] = referenceText;
+        return bibliography;
+    }
+
+    return pdf.getPage(pdf.numPages)
+               .then(getText)
+                .then(find); 
+}

@@ -2,12 +2,19 @@
 
 var pdf = "entrylevel.pdf"
 var scale = 1.5;
-var currentPage = 4;
+var currentPage = 3;
 
 
 PDFJS.getDocument(pdf)
      .then(pdf => pdf.getPage(currentPage))
      .then(renderPage);
+
+var bibliography;
+
+PDFJS.getDocument(pdf)
+     .then(findBibliography)
+     .then(bib => bibliography=bib);
+
 
 function renderPage(page) {
     var renderContext = initCanvas(page);
@@ -89,7 +96,8 @@ function showAnnotations(page) {
           .attr("height", d => d.coordinates.height)
           .classed("reference-marker", true)  
           .on("mouseover", d => d3.select("#tooltip" + d.id).classed("hidden", false))
-          .on("mouseout", d => d3.select("#tooltip" + d.id).classed("hidden", true));
+          .on("mouseout", d => d3.select("#tooltip" + d.id).classed("hidden", true))
+          .on("click", d=> addToFile(bibliography[d.ref]));
 
     
     // another subgroup for each reference contains everything needed for the tool tips, super useful for quickly hiding everything
@@ -101,15 +109,17 @@ function showAnnotations(page) {
     tooltipGroups.append("rect")
                  .attr("x", d => d.coordinates.width + 3)
                  .attr("y", 0)
-                 .attr("width", 150)
+                 .attr("width", 450)
                  .attr("height", 30)
                  .classed("reference-tooltip-box", true);
+
+    //tooltipGroups.append("foreignObject").attr("width", "100%").attr("height", "100%").append("div").classed("reference-tooltip-text", true).append("span").text("hallo")
 
     // the reference info
     tooltipGroups.append("text")
                  .attr("x", d => d.coordinates.width + 10)
                  .attr("y", 20)
-                 .text(d => "Reference text here for "+d.ref)
+                 .text(d => bibliography[d.ref])
                  .attr("font-size", 10)
                  .classed("reference-tooltip-text", true);
 }
@@ -129,6 +139,10 @@ function getCoordinates(line, startIndex, stopIndex, transform) {
              "width": textWidth(line.slice(startIndex, stopIndex)),
              "top": transform[5] + transform[0],
              "height": transform[0]}
+}
+
+function addToFile(data) {
+    d3.xhr("http://localhost:8080/").send("POST", data);
 }
 
 
